@@ -13,3 +13,7 @@ This is a repository with several examples of Elm language usage.
   - Example of more complex form with validation, custom types and dynamic list field.
 - **[Clock](clock)**
   - Example of using SVG, drawing an analogue clock showing the current time.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for more details.
