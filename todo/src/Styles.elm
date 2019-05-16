@@ -1,4 +1,4 @@
-module Styles.Todos exposing
+module Styles exposing
     ( containerStyle
     , formButtonStyle
     , formInputStyle

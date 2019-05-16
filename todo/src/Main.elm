@@ -1,4 +1,4 @@
-module Todos exposing (main)
+module Main exposing (main)
 
 import Browser
 import Html exposing (Html, a, button, div, h1, input, li, text, ul)
@@ -7,7 +7,7 @@ import Html.Events exposing (onClick, onInput)
 import Http
 import Json.Decode as D exposing (Decoder)
 import Json.Encode as E
-import Styles.Todos as Styles
+import Styles
 
 
 main =

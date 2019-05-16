@@ -1,4 +1,4 @@
-module Styles.Timer exposing
+module Styles exposing
     ( buttonStyle
     , containerStyle
     , timeStyle

@@ -2,7 +2,7 @@
   "name": "elm-todo",
   "version": "1.0.0",
   "scripts": {
-    "start": "nodemon server/main.js"
+    "server": "nodemon server/index.js"
   },
   "private": true,
   "dependencies": {

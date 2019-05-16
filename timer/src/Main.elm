@@ -1,10 +1,10 @@
-module Timer exposing (main)
+module Main exposing (main)
 
 import Browser
 import Html exposing (Html, button, div, text)
 import Html.Events exposing (onClick)
 import Random
-import Styles.Timer as Styles
+import Styles
 import Time
 
 
@@ -48,6 +48,53 @@ init _ =
     )
 
 
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg model =
+    case msg of
+        Start ->
+            ( { model | isRunning = True }, Cmd.none )
+
+        Stop ->
+            ( { model | isRunning = False }, Cmd.none )
+
+        Reset ->
+            init ()
+
+        Tick _ ->
+            let
+                isRunning =
+                    model.currentTime > 0
+
+                currentTime =
+                    if isRunning then
+                        model.currentTime - 1
+
+                    else
+                        model.currentTime
+            in
+            ( { model
+                | currentTime = currentTime
+                , isRunning = currentTime > 0
+              }
+            , Cmd.none
+            )
+
+        Randomize ->
+            ( model, Random.generate NewTimeLimit (Random.int 1 60) )
+
+        NewTimeLimit timeLimit ->
+            ( { model | currentTime = timeLimit, timeLimit = timeLimit }, Cmd.none )
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    if model.isRunning then
+        Time.every 1000 Tick
+
+    else
+        Sub.none
+
+
 view : Model -> Html Msg
 view model =
     div Styles.containerStyle
@@ -77,34 +124,3 @@ viewButtons model =
 viewButton : String -> Msg -> Html Msg
 viewButton buttonLabel msg =
     button (Styles.buttonStyle ++ [ onClick msg ]) [ text buttonLabel ]
-
-
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
-    case msg of
-        Start ->
-            ( { model | isRunning = True }, Cmd.none )
-
-        Stop ->
-            ( { model | isRunning = False }, Cmd.none )
-
-        Reset ->
-            init ()
-
-        Tick _ ->
-            ( { model | currentTime = model.currentTime - 1 }, Cmd.none )
-
-        Randomize ->
-            ( model, Random.generate NewTimeLimit (Random.int 1 60) )
-
-        NewTimeLimit timeLimit ->
-            ( { model | currentTime = timeLimit, timeLimit = timeLimit }, Cmd.none )
-
-
-subscriptions : Model -> Sub Msg
-subscriptions model =
-    if model.isRunning then
-        Time.every 1000 Tick
-
-    else
-        Sub.none
