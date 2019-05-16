@@ -9,3 +9,5 @@ This is a repository with several examples of Elm language usage.
   - Example of using Subscriptions, working with time and generating random numbers.
 - **[Web Application](webapp)**
   -  Example of building a SPA in Elm, using navigation and splitting the application into multiple modules.
+- **[Complex Form](form)**
+  - Example of more complex form with validation, custom types and dynamic list field.
