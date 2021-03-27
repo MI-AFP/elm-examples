@@ -1,16 +1,17 @@
 module Main exposing (main)
 
 import Browser
-import Html exposing (Html, button, div, text)
-import Html.Events exposing (onClick)
+import Html exposing (Html)
+import Html.Events as Events
 import Random
 import Styles
 import Time
 
 
+main : Program () Model Msg
 main =
     Browser.element
-        { init = init
+        { init = always init
         , view = view
         , update = update
         , subscriptions = subscriptions
@@ -18,12 +19,12 @@ main =
 
 
 type Msg
-    = Start
-    | Stop
-    | Reset
+    = ClickedStart
+    | ClickedStop
+    | ClickedReset
     | Tick Time.Posix
-    | Randomize
-    | NewTimeLimit Int
+    | ClickedRandomize
+    | GotNewTimeLimit Int
 
 
 type alias Model =
@@ -38,8 +39,8 @@ defaultTimeLimit =
     30
 
 
-init : () -> ( Model, Cmd Msg )
-init _ =
+init : ( Model, Cmd Msg )
+init =
     ( { timeLimit = defaultTimeLimit
       , currentTime = defaultTimeLimit
       , isRunning = False
@@ -51,14 +52,18 @@ init _ =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        Start ->
-            ( { model | isRunning = True }, Cmd.none )
+        ClickedStart ->
+            ( { model | isRunning = True }
+            , Cmd.none
+            )
 
-        Stop ->
-            ( { model | isRunning = False }, Cmd.none )
+        ClickedStop ->
+            ( { model | isRunning = False }
+            , Cmd.none
+            )
 
-        Reset ->
-            init ()
+        ClickedReset ->
+            init
 
         Tick _ ->
             let
@@ -79,11 +84,15 @@ update msg model =
             , Cmd.none
             )
 
-        Randomize ->
-            ( model, Random.generate NewTimeLimit (Random.int 1 60) )
+        ClickedRandomize ->
+            ( model
+            , Random.generate GotNewTimeLimit (Random.int 1 60)
+            )
 
-        NewTimeLimit timeLimit ->
-            ( { model | currentTime = timeLimit, timeLimit = timeLimit }, Cmd.none )
+        GotNewTimeLimit timeLimit ->
+            ( { model | currentTime = timeLimit, timeLimit = timeLimit }
+            , Cmd.none
+            )
 
 
 subscriptions : Model -> Sub Msg
@@ -97,7 +106,7 @@ subscriptions model =
 
 view : Model -> Html Msg
 view model =
-    div Styles.containerStyle
+    Html.div Styles.containerStyle
         [ viewTime model
         , viewButtons model
         ]
@@ -105,22 +114,24 @@ view model =
 
 viewTime : Model -> Html Msg
 viewTime model =
-    div Styles.timeStyle [ text <| String.fromInt model.currentTime ]
+    Html.div Styles.timeStyle
+        [ Html.text <| String.fromInt model.currentTime ]
 
 
 viewButtons : Model -> Html Msg
 viewButtons model =
     if model.isRunning then
-        div [] [ viewButton "Stop" Stop ]
+        Html.div [] [ viewButton "Stop" ClickedStop ]
 
     else
-        div []
-            [ viewButton "Start" Start
-            , viewButton "Reset" Reset
-            , viewButton "Randomize" Randomize
+        Html.div []
+            [ viewButton "Start" ClickedStart
+            , viewButton "Reset" ClickedReset
+            , viewButton "Randomize" ClickedRandomize
             ]
 
 
 viewButton : String -> Msg -> Html Msg
 viewButton buttonLabel msg =
-    button (Styles.buttonStyle ++ [ onClick msg ]) [ text buttonLabel ]
+    Html.button (Styles.buttonStyle ++ [ Events.onClick msg ])
+        [ Html.text buttonLabel ]

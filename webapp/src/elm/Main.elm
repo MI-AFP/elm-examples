@@ -1,29 +1,32 @@
 module Main exposing (main)
 
 import Browser exposing (Document)
-import Browser.Navigation as Nav
+import Browser.Navigation as BrowserNavigation
 import Home
-import Html exposing (h1, text)
+import Html
 import Login
-import Ports
-import Task
 import Url
-import Url.Parser exposing (Parser, map, oneOf, parse, s, top)
+import Url.Parser as UrlParser
 
 
+main : Program Flags Model Msg
 main =
     Browser.application
         { init = init
         , update = update
         , view = view
         , subscriptions = subscriptions
-        , onUrlChange = UrlChanged
-        , onUrlRequest = LinkClicked
+        , onUrlChange = ChangedUrl
+        , onUrlRequest = ClickedLink
         }
 
 
+type alias Flags =
+    Maybe String
+
+
 type alias Model =
-    { key : Nav.Key
+    { key : BrowserNavigation.Key
     , route : Route
     , token : Maybe String
     , loginModel : Login.Model
@@ -37,46 +40,45 @@ type Route
     | NotFound
 
 
-route : Parser (Route -> a) a
-route =
-    oneOf
-        [ map Home top
-        , map Login (s "login")
+routeParser : UrlParser.Parser (Route -> a) a
+routeParser =
+    UrlParser.oneOf
+        [ UrlParser.map Home UrlParser.top
+        , UrlParser.map Login (UrlParser.s "login")
         ]
 
 
 toRoute : Url.Url -> Route
 toRoute url =
-    Maybe.withDefault NotFound (parse route url)
+    Maybe.withDefault NotFound (UrlParser.parse routeParser url)
 
 
 type Msg
-    = UrlChanged Url.Url
-    | LinkClicked Browser.UrlRequest
-    | GotToken String
+    = ChangedUrl Url.Url
+    | ClickedLink Browser.UrlRequest
     | LoginMsg Login.Msg
     | HomeMsg Home.Msg
 
 
-init : Maybe String -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
+init : Flags -> Url.Url -> BrowserNavigation.Key -> ( Model, Cmd Msg )
 init token url key =
     let
-        initialRoute =
+        route =
             toRoute url
 
         redirectCmd =
-            case ( initialRoute, token ) of
+            case ( route, token ) of
                 ( Home, Nothing ) ->
-                    Nav.pushUrl key "/login"
+                    BrowserNavigation.pushUrl key "/login"
 
                 ( Login, Just _ ) ->
-                    Nav.pushUrl key "/"
+                    BrowserNavigation.pushUrl key "/"
 
                 _ ->
                     Cmd.none
     in
     ( { key = key
-      , route = initialRoute
+      , route = route
       , token = token
       , loginModel = Login.init
       , homeModel = Home.init
@@ -88,47 +90,38 @@ init token url key =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        LinkClicked urlRequest ->
+        ClickedLink urlRequest ->
             case urlRequest of
                 Browser.Internal url ->
-                    ( model, Nav.pushUrl model.key (Url.toString url) )
+                    ( model
+                    , BrowserNavigation.pushUrl model.key (Url.toString url)
+                    )
 
                 Browser.External href ->
-                    ( model, Nav.load href )
+                    ( model
+                    , BrowserNavigation.load href
+                    )
 
-        UrlChanged url ->
+        ChangedUrl url ->
             ( { model | route = toRoute url }
             , Cmd.none
             )
 
         LoginMsg loginMsg ->
             let
-                dispatchToken token =
-                    Task.perform (always <| GotToken token) (Task.succeed ())
-
-                ( newLoginModel, cmd ) =
-                    Login.update
-                        { tagger = LoginMsg
-                        , loginCmd = dispatchToken
-                        }
+                ( updatedLoginModel, loginCmd ) =
+                    Login.update model.key
+                        LoginMsg
                         loginMsg
                         model.loginModel
             in
-            ( { model | loginModel = newLoginModel }
-            , cmd
+            ( { model | loginModel = updatedLoginModel }
+            , loginCmd
             )
 
         HomeMsg homeMsg ->
             ( { model | homeModel = Home.update homeMsg model.homeModel }
             , Cmd.none
-            )
-
-        GotToken token ->
-            ( { model | token = Just token }
-            , Cmd.batch
-                [ Nav.pushUrl model.key "/"
-                , Ports.saveToken token
-                ]
             )
 
 
@@ -146,7 +139,7 @@ view model =
                         |> Html.map HomeMsg
 
                 NotFound ->
-                    h1 [] [ text "Not Found" ]
+                    Html.h1 [] [ Html.text "Not Found" ]
     in
     { title = "Elm Webpack Boilerplate"
     , body = [ content ]
@@ -154,5 +147,5 @@ view model =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
+subscriptions _ =
     Sub.none

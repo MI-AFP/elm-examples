@@ -1,22 +1,24 @@
 module Login exposing
     ( Model
-    , Msg(..)
+    , Msg
     , init
     , update
     , view
     )
 
-import Html exposing (Html, button, div, form, input, label, text)
-import Html.Attributes exposing (class, type_, value)
-import Html.Events exposing (onClick, onInput, onSubmit)
+import Browser.Navigation as BrowserNavigation
+import Html exposing (Html)
+import Html.Attributes as Attributes
+import Html.Events as Events
 import Http
+import Ports
 import Requests
 
 
 type Msg
-    = UsernameChanged String
-    | PasswordChanged String
-    | Submit
+    = InsertedUsername String
+    | InsertedPassword String
+    | ClickedSubmit
     | GotToken (Result Http.Error String)
 
 
@@ -35,41 +37,44 @@ init =
     }
 
 
-update :
-    { tagger : Msg -> msg
-    , loginCmd : String -> Cmd msg
-    }
-    -> Msg
-    -> Model
-    -> ( Model, Cmd msg )
-update { tagger, loginCmd } msg model =
+update : BrowserNavigation.Key -> (Msg -> msg) -> Msg -> Model -> ( Model, Cmd msg )
+update key wrapMsg msg model =
     case msg of
-        UsernameChanged newUsername ->
-            ( { model | username = newUsername }
+        InsertedUsername username ->
+            ( { model | username = username }
             , Cmd.none
             )
 
-        PasswordChanged newPassword ->
-            ( { model | password = newPassword }
+        InsertedPassword password ->
+            ( { model | password = password }
             , Cmd.none
             )
 
-        Submit ->
+        ClickedSubmit ->
             if String.isEmpty model.username || String.isEmpty model.password then
-                ( model, Cmd.none )
+                ( model
+                , Cmd.none
+                )
 
             else
                 ( model
-                , Requests.fetchToken model.username model.password (tagger << GotToken)
+                , Requests.fetchToken model (wrapMsg << GotToken)
                 )
 
         GotToken result ->
             case result of
                 Ok token ->
-                    ( model, loginCmd token )
+                    ( model
+                    , Cmd.batch
+                        [ BrowserNavigation.pushUrl key "/"
+                        , Ports.saveToken token
+                        ]
+                    )
 
                 Err _ ->
-                    ( { model | failed = True }, Cmd.none )
+                    ( { model | failed = True }
+                    , Cmd.none
+                    )
 
 
 view : Model -> Html Msg
@@ -77,17 +82,28 @@ view model =
     let
         error =
             if model.failed then
-                div [ class "login-error" ]
-                    [ text "Invalid credentials" ]
+                Html.div [ Attributes.class "login-error" ]
+                    [ Html.text "Invalid credentials" ]
 
             else
-                text ""
+                Html.text ""
     in
-    form [ onSubmit Submit, class "page Login" ]
+    Html.form [ Events.onSubmit ClickedSubmit, Attributes.class "page Login" ]
         [ error
-        , label [] [ text "Username" ]
-        , input [ type_ "text", value model.username, onInput UsernameChanged ] []
-        , label [] [ text "Password" ]
-        , input [ type_ "password", value model.password, onInput PasswordChanged ] []
-        , button [ type_ "submit" ] [ text "Log In" ]
+        , Html.label [] [ Html.text "Username" ]
+        , Html.input
+            [ Attributes.type_ "text"
+            , Attributes.value model.username
+            , Events.onInput InsertedUsername
+            ]
+            []
+        , Html.label [] [ Html.text "Password" ]
+        , Html.input
+            [ Attributes.type_ "password"
+            , Attributes.value model.password
+            , Events.onInput InsertedPassword
+            ]
+            []
+        , Html.button [ Attributes.type_ "submit" ]
+            [ Html.text "Log In" ]
         ]

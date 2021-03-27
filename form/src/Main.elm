@@ -1,26 +1,27 @@
 module Main exposing (main)
 
 import Browser exposing (Document)
-import Form exposing (Form)
-import Form.Error exposing (ErrorValue(..))
-import Form.Input as Input
-import Form.Validate as Validate exposing (..)
-import Html exposing (..)
-import Html.Attributes exposing (style, type_)
-import Html.Events exposing (..)
+import Form
+import Form.Error as FormError
+import Form.Input as FormInput
+import Form.Validate as FormValidate
+import Html exposing (Html)
+import Html.Attributes as Attributes
+import Html.Events as Events
 
 
+main : Program () Model Msg
 main =
     Browser.document
         { init = init
         , view = view
         , update = update
-        , subscriptions = \_ -> Sub.none
+        , subscriptions = always Sub.none
         }
 
 
 type alias Model =
-    { personForm : Form CustomFormError Person
+    { personForm : Form.Form CustomFormError Person
     }
 
 
@@ -44,43 +45,43 @@ type CustomFormError
     = InvalidColor
 
 
-initPersonForm : Form CustomFormError Person
+initPersonForm : Form.Form CustomFormError Person
 initPersonForm =
     Form.initial [] personValidation
 
 
-personValidation : Validation CustomFormError Person
+personValidation : FormValidate.Validation CustomFormError Person
 personValidation =
-    Validate.map4 Person
-        (Validate.field "name" Validate.string)
-        (Validate.field "age" Validate.int)
-        (Validate.field "favoriteColor" colorValidation)
-        (Validate.field "favoriteFoods" (Validate.list Validate.string))
+    FormValidate.map4 Person
+        (FormValidate.field "name" FormValidate.string)
+        (FormValidate.field "age" FormValidate.int)
+        (FormValidate.field "favoriteColor" colorValidation)
+        (FormValidate.field "favoriteFoods" (FormValidate.list FormValidate.string))
 
 
-colorValidation : Validation CustomFormError Color
+colorValidation : FormValidate.Validation CustomFormError Color
 colorValidation =
-    Validate.string
-        |> Validate.andThen
+    FormValidate.string
+        |> FormValidate.andThen
             (\value ->
                 case value of
                     "Red" ->
-                        Validate.succeed Red
+                        FormValidate.succeed Red
 
                     "Yellow" ->
-                        Validate.succeed Yellow
+                        FormValidate.succeed Yellow
 
                     "Green" ->
-                        Validate.succeed Green
+                        FormValidate.succeed Green
 
                     "Blue" ->
-                        Validate.succeed Blue
+                        FormValidate.succeed Blue
 
                     "Purple" ->
-                        Validate.succeed Purple
+                        FormValidate.succeed Purple
 
                     _ ->
-                        Validate.fail <| Validate.customError InvalidColor
+                        FormValidate.fail <| FormValidate.customError InvalidColor
             )
 
 
@@ -129,16 +130,17 @@ view model =
     }
 
 
-viewForm : Form CustomFormError Person -> Html Form.Msg
+viewForm : Form.Form CustomFormError Person -> Html Form.Msg
 viewForm personForm =
-    form [ onSubmit Form.Submit ]
-        [ fieldset []
-            [ legend [] [ text "Person" ]
+    Html.form [ Events.onSubmit Form.Submit ]
+        [ Html.fieldset []
+            [ Html.legend [] [ Html.text "Person" ]
             , viewTextInput personForm "name" "Name"
             , viewTextInput personForm "age" "Age"
             , viewSelectInput colorOptions personForm "favoriteColor" "Favorite Color"
             , viewFormList personForm "favoriteFoods" "Favorite Foods"
-            , button [ type_ "submit" ] [ text "Submit" ]
+            , Html.button [ Attributes.type_ "submit" ]
+                [ Html.text "Submit" ]
             ]
         ]
 
@@ -154,17 +156,17 @@ colorOptions =
     ]
 
 
-viewSelectInput : List ( String, String ) -> Form CustomFormError Person -> String -> String -> Html Form.Msg
+viewSelectInput : List ( String, String ) -> Form.Form CustomFormError Person -> String -> String -> Html Form.Msg
 viewSelectInput options =
-    viewInput (Input.selectInput options)
+    viewInput (FormInput.selectInput options)
 
 
-viewTextInput : Form CustomFormError Person -> String -> String -> Html Form.Msg
+viewTextInput : Form.Form CustomFormError Person -> String -> String -> Html Form.Msg
 viewTextInput =
-    viewInput Input.textInput
+    viewInput FormInput.textInput
 
 
-viewInput : Input.Input CustomFormError String -> Form CustomFormError Person -> String -> String -> Html Form.Msg
+viewInput : FormInput.Input CustomFormError String -> Form.Form CustomFormError Person -> String -> String -> Html Form.Msg
 viewInput inputFn personForm fieldName fieldLabel =
     let
         field =
@@ -173,69 +175,72 @@ viewInput inputFn personForm fieldName fieldLabel =
         errorText =
             case field.liveError of
                 Just error ->
-                    div [ style "color" "red" ]
-                        [ text <| errorToString error ]
+                    Html.div [ Attributes.style "color" "red" ]
+                        [ Html.text <| errorToString error ]
 
                 _ ->
-                    text ""
+                    Html.text ""
     in
-    div [ style "margin-bottom" "1rem" ]
-        [ div [] [ label [] [ text fieldLabel ] ]
-        , div []
+    Html.div [ Attributes.style "margin-bottom" "1rem" ]
+        [ Html.div [] [ Html.label [] [ Html.text fieldLabel ] ]
+        , Html.div []
             [ inputFn field []
             , errorText
             ]
         ]
 
 
-viewFormList : Form CustomFormError Person -> String -> String -> Html Form.Msg
+viewFormList : Form.Form CustomFormError Person -> String -> String -> Html Form.Msg
 viewFormList personForm fieldName fieldLabel =
     let
         itemViews =
-            List.map (viewItem personForm fieldName) (Form.getListIndexes fieldName personForm)
+            personForm
+                |> Form.getListIndexes fieldName
+                |> List.map (viewItem personForm fieldName)
     in
-    div [ style "margin-bottom" "1rem" ]
-        [ div [] [ label [] [ text fieldLabel ] ]
-        , ul [] itemViews
-        , a
-            [ style "color" "blue"
-            , style "cursor" "pointer"
-            , onClick (Form.Append fieldName)
+    Html.div [ Attributes.style "margin-bottom" "1rem" ]
+        [ Html.div [] [ Html.label [] [ Html.text fieldLabel ] ]
+        , Html.ul [] itemViews
+        , Html.a
+            [ Attributes.style "color" "blue"
+            , Attributes.style "cursor" "pointer"
+            , Events.onClick <| Form.Append fieldName
             ]
-            [ text "Add" ]
+            [ Html.text "Add" ]
         ]
 
 
-viewItem : Form CustomFormError Person -> String -> Int -> Html Form.Msg
+viewItem : Form.Form CustomFormError Person -> String -> Int -> Html Form.Msg
 viewItem personForm name i =
-    li [ style "display" "flex" ]
+    Html.li [ Attributes.style "display" "flex" ]
         [ viewTextInput personForm (name ++ "." ++ String.fromInt i) ""
-        , a
-            [ style "color" "red"
-            , style "margin-left" "1rem"
-            , style "cursor" "pointer"
-            , onClick (Form.RemoveItem name i)
+        , Html.a
+            [ Attributes.style "color" "red"
+            , Attributes.style "margin-left" "1rem"
+            , Attributes.style "cursor" "pointer"
+            , Events.onClick (Form.RemoveItem name i)
             ]
-            [ text "Remove" ]
+            [ Html.text "Remove" ]
         ]
 
 
-errorToString : ErrorValue CustomFormError -> String
+errorToString : FormError.ErrorValue CustomFormError -> String
 errorToString error =
     case error of
-        Empty ->
+        FormError.Empty ->
             "Field cannot be empty"
 
-        InvalidString ->
+        FormError.InvalidString ->
             "Field cannot be empty"
 
-        InvalidInt ->
+        FormError.InvalidInt ->
             "This is not a valid number"
 
-        CustomError err ->
+        FormError.CustomError err ->
             case err of
                 InvalidColor ->
                     "Invalid color"
 
+        -- Bad practice to use default for custom type values in case - of expression
         _ ->
             "Invalid value"
