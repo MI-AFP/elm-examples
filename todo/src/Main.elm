@@ -1,15 +1,16 @@
 module Main exposing (main)
 
 import Browser
-import Html exposing (Html, a, button, div, h1, input, li, text, ul)
-import Html.Attributes exposing (type_, value)
-import Html.Events exposing (onClick, onInput)
+import Html exposing (Html)
+import Html.Attributes as Attributes
+import Html.Events as Events
 import Http
-import Json.Decode as D exposing (Decoder)
-import Json.Encode as E
+import Json.Decode as Decode
+import Json.Encode as Encode
 import Styles
 
 
+main : Program () Model Msg
 main =
     Browser.element
         { init = init
@@ -28,7 +29,7 @@ type alias Model =
 type TodoList
     = Loading
     | Error String
-    | TodoList (List Todo)
+    | Success (List Todo)
 
 
 type alias Todo =
@@ -38,23 +39,28 @@ type alias Todo =
     }
 
 
-todoDecoder : Decoder Todo
+baseApiUrl : String
+baseApiUrl =
+    "http://localhost:3000/"
+
+
+todoDecoder : Decode.Decoder Todo
 todoDecoder =
-    D.map3 Todo
-        (D.field "id" D.int)
-        (D.field "label" D.string)
-        (D.field "completed" D.bool)
+    Decode.map3 Todo
+        (Decode.field "id" Decode.int)
+        (Decode.field "label" Decode.string)
+        (Decode.field "completed" Decode.bool)
 
 
-todoListDecoder : Decoder (List Todo)
+todoListDecoder : Decode.Decoder (List Todo)
 todoListDecoder =
-    D.list todoDecoder
+    Decode.list todoDecoder
 
 
 getTodos : Cmd Msg
 getTodos =
     Http.get
-        { url = "http://localhost:3000/todos"
+        { url = baseApiUrl ++ "todos"
         , expect = Http.expectJson GotTodos todoListDecoder
         }
 
@@ -63,13 +69,13 @@ postTodo : String -> Cmd Msg
 postTodo todoLabel =
     let
         body =
-            E.object
-                [ ( "label", E.string todoLabel ) ]
+            Encode.object
+                [ ( "label", Encode.string todoLabel ) ]
     in
     Http.post
-        { url = "http://localhost:3000/todos"
+        { url = baseApiUrl ++ "todos"
         , body = Http.jsonBody body
-        , expect = Http.expectWhatever SavedTodo
+        , expect = Http.expectWhatever SaveTodoResponse
         }
 
 
@@ -77,17 +83,17 @@ putTodo : Todo -> Cmd Msg
 putTodo todo =
     let
         body =
-            E.object
-                [ ( "label", E.string todo.label )
-                , ( "completed", E.bool todo.completed )
+            Encode.object
+                [ ( "label", Encode.string todo.label )
+                , ( "completed", Encode.bool todo.completed )
                 ]
     in
     Http.request
         { method = "PUT"
         , headers = []
-        , url = "http://localhost:3000/todos/" ++ String.fromInt todo.id
+        , url = baseApiUrl ++ "todos/" ++ String.fromInt todo.id
         , body = Http.jsonBody body
-        , expect = Http.expectWhatever SavedTodo
+        , expect = Http.expectWhatever SaveTodoResponse
         , timeout = Nothing
         , tracker = Nothing
         }
@@ -103,49 +109,49 @@ init _ =
 
 
 type Msg
-    = ChangeNewLabel String
+    = InsertedLabel String
     | GotTodos (Result Http.Error (List Todo))
-    | SaveTodo
-    | SavedTodo (Result Http.Error ())
-    | ToggleCompleted Todo
+    | ClickedSaveTodo
+    | SaveTodoResponse (Result Http.Error ())
+    | ToggledCompleted Todo
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        ChangeNewLabel value ->
-            ( { model | newLabel = value }, Cmd.none )
+        InsertedLabel label ->
+            ( { model | newLabel = label }, Cmd.none )
 
         GotTodos result ->
             let
                 newTodos =
                     case result of
                         Ok todos ->
-                            TodoList todos
+                            Success todos
 
                         Err _ ->
                             Error "Unable to get TODOs"
             in
             ( { model | todos = newTodos }, Cmd.none )
 
-        SaveTodo ->
+        ClickedSaveTodo ->
             if String.length model.newLabel > 0 then
                 ( { model | newLabel = "" }, postTodo model.newLabel )
 
             else
                 ( model, Cmd.none )
 
-        SavedTodo _ ->
+        SaveTodoResponse _ ->
             ( model, getTodos )
 
-        ToggleCompleted todo ->
+        ToggledCompleted todo ->
             ( model, putTodo { todo | completed = not todo.completed } )
 
 
 view : Model -> Html Msg
 view model =
-    div Styles.containerStyle
-        [ h1 [] [ text "Todo list" ]
+    Html.div Styles.containerStyle
+        [ Html.h1 [] [ Html.text "Todo list" ]
         , todoFormView model
         , todoListView model
         ]
@@ -153,16 +159,24 @@ view model =
 
 todoFormView : Model -> Html Msg
 todoFormView model =
-    div Styles.formStyle
-        [ input (Styles.formInputStyle ++ [ type_ "text", value model.newLabel, onInput ChangeNewLabel ]) []
-        , button (Styles.formButtonStyle ++ [ onClick SaveTodo ]) [ text "Add" ]
+    Html.div Styles.formStyle
+        [ Html.input
+            (Styles.formInputStyle
+                ++ [ Attributes.type_ "text"
+                   , Attributes.value model.newLabel
+                   , Events.onInput InsertedLabel
+                   ]
+            )
+            []
+        , Html.button (Styles.formButtonStyle ++ [ Events.onClick ClickedSaveTodo ])
+            [ Html.text "Add" ]
         ]
 
 
 todoListView : Model -> Html Msg
 todoListView model =
     case model.todos of
-        TodoList todos ->
+        Success todos ->
             todoListListView todos
 
         Loading ->
@@ -174,18 +188,18 @@ todoListView model =
 
 todoListListView : List Todo -> Html Msg
 todoListListView todos =
-    ul Styles.todoListListStyle
+    Html.ul Styles.todoListListStyle
         (List.map todoView todos)
 
 
 todoListLoadingView : Html Msg
 todoListLoadingView =
-    div [] [ text "Loading..." ]
+    Html.div [] [ Html.text "Loading..." ]
 
 
 todoListErrorView : String -> Html Msg
 todoListErrorView error =
-    div Styles.todoListErrorStyle [ text error ]
+    Html.div Styles.todoListErrorStyle [ Html.text error ]
 
 
 todoView : Todo -> Html Msg
@@ -198,7 +212,8 @@ todoView todo =
             else
                 ""
     in
-    li Styles.todoStyle
-        [ a (Styles.todoCheckStyle ++ [ onClick <| ToggleCompleted todo ]) [ text checkText ]
-        , text todo.label
+    Html.li Styles.todoStyle
+        [ Html.a (Styles.todoCheckStyle ++ [ Events.onClick <| ToggledCompleted todo ])
+            [ Html.text checkText ]
+        , Html.text todo.label
         ]

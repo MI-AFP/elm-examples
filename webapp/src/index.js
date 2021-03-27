@@ -1,12 +1,13 @@
 'use strict';
 
-var program = require('./elm/Main.elm');
+import { Elm } from './elm/Main.elm';
 
-var app = program.Elm.Main.init({
-    flags: localStorage.getItem('token')
+const LOCAL_STORAGE_TOKEN_KEY = 'token';
+
+const app = Elm.Main.init({
+  flags: localStorage.getItem(LOCAL_STORAGE_TOKEN_KEY),
 });
 
-
-app.ports.saveToken.subscribe(function(token) {
-    localStorage.setItem('token', token);
+app.ports.saveToken.subscribe((token) => {
+  localStorage.setItem(LOCAL_STORAGE_TOKEN_KEY, token);
 });

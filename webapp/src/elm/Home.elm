@@ -1,13 +1,13 @@
 module Home exposing
     ( Model
-    , Msg(..)
+    , Msg
     , init
     , update
     , view
     )
 
-import Html exposing (Html, div, text)
-import Html.Attributes exposing (class)
+import Html exposing (Html)
+import Html.Attributes as Attributes
 
 
 type Msg
@@ -15,20 +15,19 @@ type Msg
 
 
 type alias Model =
-    {}
+    ()
 
 
 init : Model
 init =
-    {}
+    ()
 
 
 update : Msg -> Model -> Model
-update msg model =
+update NoOp model =
     model
 
 
 view : Model -> Html Msg
-view model =
-    div [ class "page" ]
-        [ text "Home" ]
+view _ =
+    Html.div [ Attributes.class "page" ] [ Html.text "Home" ]

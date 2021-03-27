@@ -1,26 +1,26 @@
 module Requests exposing (fetchToken)
 
 import Http
-import Json.Decode as D
-import Json.Encode as E
+import Json.Decode as Decode
+import Json.Encode as Encode
 
 
-apiUrl : String
-apiUrl =
-    "http://localhost:3000"
+baseApiUrl : String
+baseApiUrl =
+    "http://localhost:3000/"
 
 
-fetchToken : String -> String -> (Result Http.Error String -> msg) -> Cmd msg
-fetchToken username password msg =
+fetchToken : { r | username : String, password : String } -> (Result Http.Error String -> msg) -> Cmd msg
+fetchToken { username, password } msg =
     let
         body =
-            E.object
-                [ ( "username", E.string username )
-                , ( "password", E.string password )
+            Encode.object
+                [ ( "username", Encode.string username )
+                , ( "password", Encode.string password )
                 ]
     in
     Http.post
-        { url = apiUrl ++ "/users/token"
+        { url = baseApiUrl ++ "users/token"
         , body = Http.jsonBody body
-        , expect = Http.expectJson msg (D.field "token" D.string)
+        , expect = Http.expectJson msg (Decode.field "token" Decode.string)
         }

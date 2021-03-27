@@ -1,10 +1,10 @@
-module Main exposing (Msg(..), main, update, view)
+module Main exposing (main)
 
 import Browser
-import Html as H
-import Html.Attributes as HA
-import Svg exposing (..)
-import Svg.Attributes exposing (..)
+import Html exposing (Html)
+import Html.Attributes as Attributes
+import Svg
+import Svg.Attributes as SvgAttributes
 import Time
 
 
@@ -29,27 +29,27 @@ init _ =
 
 
 type Msg
-    = NewTime Time.Posix
+    = GotNewTime Time.Posix
 
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Time.every 1000 NewTime
+    Time.every 1000 GotNewTime
 
 
 update msg model =
     case msg of
-        NewTime time ->
+        GotNewTime time ->
             ( { model | time = time }, Cmd.none )
 
 
 view model =
-    H.div [ HA.style "text-align" "center" ]
+    Html.div [ Attributes.style "text-align" "center" ]
         [ clock model.time
         ]
 
 
-clock : Time.Posix -> Svg msg
+clock : Time.Posix -> Svg.Svg msg
 clock time =
     let
         seconds =
@@ -61,12 +61,12 @@ clock time =
         hours =
             toFloat (modBy 12 (Time.toHour Time.utc time)) / 12
     in
-    svg [ width "200", height "200" ]
-        ([ circle
-            [ cx "100"
-            , cy "100"
-            , r "100"
-            , fill "#ddd"
+    Svg.svg [ SvgAttributes.width "200", SvgAttributes.height "200" ]
+        ([ Svg.circle
+            [ SvgAttributes.cx "100"
+            , SvgAttributes.cy "100"
+            , SvgAttributes.r "100"
+            , SvgAttributes.fill "#ddd"
             ]
             []
          ]
@@ -78,12 +78,12 @@ clock time =
         )
 
 
-hoursTicks : List (Svg msg)
+hoursTicks : List (Svg.Svg msg)
 hoursTicks =
     List.map hour <| List.range 0 11
 
 
-hour : Int -> Svg msg
+hour : Int -> Svg.Svg msg
 hour tick =
     let
         angle =
@@ -114,30 +114,45 @@ hour tick =
         y2_ =
             c + length2 * sin ((angle - 0.25) * 2 * pi)
     in
-    line
-        [ x1 <| String.fromFloat x1_
-        , y1 <| String.fromFloat y1_
-        , x2 <| String.fromFloat x2_
-        , y2 <| String.fromFloat y2_
-        , stroke "#ccc"
-        , strokeWidth "5"
+    Svg.line
+        [ SvgAttributes.x1 <| String.fromFloat x1_
+        , SvgAttributes.y1 <| String.fromFloat y1_
+        , SvgAttributes.x2 <| String.fromFloat x2_
+        , SvgAttributes.y2 <| String.fromFloat y2_
+        , SvgAttributes.stroke "#ccc"
+        , SvgAttributes.strokeWidth "5"
         ]
         []
 
 
+hourHand : Float -> Svg.Svg msg
 hourHand =
-    hand [ stroke "black", strokeWidth "4" ] 75
+    hand
+        [ SvgAttributes.stroke "black"
+        , SvgAttributes.strokeWidth "4"
+        ]
+        75
 
 
+minutesHand : Float -> Svg.Svg msg
 minutesHand =
-    hand [ stroke "black", strokeWidth "3" ] 85
+    hand
+        [ SvgAttributes.stroke "black"
+        , SvgAttributes.strokeWidth "3"
+        ]
+        85
 
 
+secondHand : Float -> Svg.Svg msg
 secondHand =
-    hand [ stroke "red", strokeWidth "1" ] 95
+    hand
+        [ SvgAttributes.stroke "red"
+        , SvgAttributes.strokeWidth "1"
+        ]
+        95
 
 
-hand : List (Attribute msg) -> Float -> Float -> Svg msg
+hand : List (Svg.Attribute msg) -> Float -> Float -> Svg.Svg msg
 hand attributes length angle =
     let
         c =
@@ -149,11 +164,11 @@ hand attributes length angle =
         y =
             c + length * sin ((angle - 0.25) * 2 * pi)
     in
-    line
-        ([ x1 "100"
-         , y1 "100"
-         , x2 <| String.fromFloat x
-         , y2 <| String.fromFloat y
+    Svg.line
+        ([ SvgAttributes.x1 "100"
+         , SvgAttributes.y1 "100"
+         , SvgAttributes.x2 <| String.fromFloat x
+         , SvgAttributes.y2 <| String.fromFloat y
          ]
             ++ attributes
         )
